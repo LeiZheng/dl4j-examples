@@ -20,6 +20,7 @@ import org.deeplearning4j.spark.impl.multilayer.SparkDl4jMultiLayer;
 import org.deeplearning4j.spark.impl.paramavg.ParameterAveragingTrainingMaster;
 import org.deeplearning4j.spark.stats.EventStats;
 import org.deeplearning4j.spark.stats.StatsUtils;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
@@ -116,9 +117,9 @@ public class TrainingStatsExample {
         //Get the statistics:
         SparkTrainingStats stats = sparkNetwork.getSparkTrainingStats();
         Set<String> statsKeySet = stats.getKeySet();    //Keys for the types of statistics
-        System.out.println("--- Collected Statistics ---");
+        log.info("--- Collected Statistics ---");
         for(String s : statsKeySet){
-            System.out.println(s);
+            log.info(s);
         }
 
         //Demo purposes: get one statistic and print it
@@ -153,14 +154,14 @@ public class TrainingStatsExample {
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
             .learningRate(0.1)
-            .updater(Updater.RMSPROP).rmsDecay(0.95)
+            .updater(Updater.RMSPROP)   //To configure: .updater(new RmsProp(0.95))
             .seed(12345)
             .regularization(true).l2(0.001)
             .weightInit(WeightInit.XAVIER)
             .list()
-            .layer(0, new GravesLSTM.Builder().nIn(nIn).nOut(lstmLayerSize).activation("tanh").build())
-            .layer(1, new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize).activation("tanh").build())
-            .layer(2, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
+            .layer(0, new GravesLSTM.Builder().nIn(nIn).nOut(lstmLayerSize).activation(Activation.TANH).build())
+            .layer(1, new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize).activation(Activation.TANH).build())
+            .layer(2, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MCXENT).activation(Activation.SOFTMAX)        //MCXENT + softmax for classification
                 .nIn(lstmLayerSize).nOut(nOut).build())
             .backpropType(BackpropType.TruncatedBPTT).tBPTTForwardLength(tbpttLength).tBPTTBackwardLength(tbpttLength)
             .pretrain(false).backprop(true)

@@ -18,8 +18,10 @@ import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.spark.api.TrainingMaster;
 import org.deeplearning4j.spark.impl.multilayer.SparkDl4jMultiLayer;
 import org.deeplearning4j.spark.impl.paramavg.ParameterAveragingTrainingMaster;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +56,7 @@ public class MnistMLPExample {
     private int batchSizePerWorker = 16;
 
     @Parameter(names = "-numEpochs", description = "Number of epochs for training")
-    private int numEpochs = 15;
+    private int numEpochs = 2;
 
     public static void main(String[] args) throws Exception {
         new MnistMLPExample().entryPoint(args);
@@ -101,16 +103,16 @@ public class MnistMLPExample {
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
             .seed(12345)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
-            .activation("leakyrelu")
+            .activation(Activation.LEAKYRELU)
             .weightInit(WeightInit.XAVIER)
-            .learningRate(0.02)
-            .updater(Updater.NESTEROVS).momentum(0.9)
+            .learningRate(0.1)
+            .updater(Updater.NESTEROVS)// To configure: .updater(Nesterovs.builder().momentum(0.9).build())
             .regularization(true).l2(1e-4)
             .list()
             .layer(0, new DenseLayer.Builder().nIn(28 * 28).nOut(500).build())
             .layer(1, new DenseLayer.Builder().nIn(500).nOut(100).build())
             .layer(2, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-                .activation("softmax").nIn(100).nOut(10).build())
+                .activation(Activation.SOFTMAX).nIn(100).nOut(10).build())
             .pretrain(false).backprop(true)
             .build();
 
@@ -131,7 +133,8 @@ public class MnistMLPExample {
         }
 
         //Perform evaluation (distributed)
-        Evaluation evaluation = sparkNet.evaluate(testData);
+//        Evaluation evaluation = sparkNet.evaluate(testData);
+        Evaluation evaluation = sparkNet.doEvaluation(testData, 64, new Evaluation(10))[0]; //Work-around for 0.9.1 bug: see https://deeplearning4j.org/releasenotes
         log.info("***** Evaluation *****");
         log.info(evaluation.stats());
 

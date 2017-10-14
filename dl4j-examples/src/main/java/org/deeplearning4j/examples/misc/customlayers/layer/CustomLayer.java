@@ -3,9 +3,15 @@ package org.deeplearning4j.examples.misc.customlayers.layer;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.ParamInitializer;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
+import org.deeplearning4j.nn.conf.memory.LayerMemoryReport;
+import org.deeplearning4j.nn.conf.memory.MemoryReport;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.deeplearning4j.optimize.api.IterationListener;
+import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.activations.IActivation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.util.Collection;
@@ -18,7 +24,7 @@ import java.util.Map;
  */
 public class CustomLayer extends FeedForwardLayer {
 
-    private String secondActivationFunction;
+    private IActivation secondActivationFunction;
 
     public CustomLayer() {
         //We need a no-arg constructor so we can deserialize the configuration from JSON or YAML format
@@ -31,12 +37,12 @@ public class CustomLayer extends FeedForwardLayer {
         this.secondActivationFunction = builder.secondActivationFunction;
     }
 
-    public String getSecondActivationFunction() {
+    public IActivation getSecondActivationFunction() {
         //We also need setter/getter methods for our layer configuration fields (if any) for JSON serialization
         return secondActivationFunction;
     }
 
-    public void setSecondActivationFunction(String secondActivationFunction) {
+    public void setSecondActivationFunction(IActivation secondActivationFunction) {
         //We also need setter/getter methods for our layer configuration fields (if any) for JSON serialization
         this.secondActivationFunction = secondActivationFunction;
     }
@@ -78,12 +84,43 @@ public class CustomLayer extends FeedForwardLayer {
         return DefaultParamInitializer.getInstance();
     }
 
+    @Override
+    public LayerMemoryReport getMemoryReport(InputType inputType) {
+        //Memory report is used to estimate how much memory is required for the layer, for different configurations
+        //If you don't need this functionality for your custom layer, you can return a LayerMemoryReport
+        // with all 0s, or
+
+        //This implementation: based on DenseLayer implementation
+        InputType outputType = getOutputType(-1, inputType);
+
+        int numParams = initializer().numParams(this);
+        int updaterStateSize = (int)getIUpdater().stateSize(numParams);
+
+        int trainSizeFixed = 0;
+        int trainSizeVariable = 0;
+        if(getDropOut() > 0){
+            //Assume we dup the input for dropout
+            trainSizeVariable += inputType.arrayElementsPerExample();
+        }
+
+        //Also, during backprop: we do a preOut call -> gives us activations size equal to the output size
+        // which is modified in-place by activation function backprop
+        // then we have 'epsilonNext' which is equivalent to input size
+        trainSizeVariable += outputType.arrayElementsPerExample();
+
+        return new LayerMemoryReport.Builder(layerName, CustomLayer.class, inputType, outputType)
+            .standardMemory(numParams, updaterStateSize)
+            .workingMemory(0, 0, trainSizeFixed, trainSizeVariable)     //No additional memory (beyond activations) for inference
+            .cacheMemory(MemoryReport.CACHE_MODE_ALL_ZEROS, MemoryReport.CACHE_MODE_ALL_ZEROS) //No caching in DenseLayer
+            .build();
+    }
+
 
     //Here's an implementation of a builder pattern, to allow us to easily configure the layer
     //Note that we are inheriting all of the FeedForwardLayer.Builder options: things like n
     public static class Builder extends FeedForwardLayer.Builder<Builder> {
 
-        private String secondActivationFunction;
+        private IActivation secondActivationFunction;
 
         //This is an example of a custom property in the configuration
 
@@ -93,7 +130,16 @@ public class CustomLayer extends FeedForwardLayer {
          * @param secondActivationFunction Second activation function for the layer
          */
         public Builder secondActivationFunction(String secondActivationFunction) {
-            this.secondActivationFunction = secondActivationFunction;
+            return secondActivationFunction(Activation.fromString(secondActivationFunction));
+        }
+
+        /**
+         * A custom property used in this custom layer example. See the CustomLayerExampleReadme.md for details
+         *
+         * @param secondActivationFunction Second activation function for the layer
+         */
+        public Builder secondActivationFunction(Activation secondActivationFunction){
+            this.secondActivationFunction = secondActivationFunction.getActivationFunction();
             return this;
         }
 

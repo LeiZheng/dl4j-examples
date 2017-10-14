@@ -1,7 +1,6 @@
 package org.datavec.transform.basic;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.datavec.api.records.reader.RecordReader;
@@ -12,13 +11,10 @@ import org.datavec.api.transform.condition.column.CategoricalColumnCondition;
 import org.datavec.api.transform.condition.column.DoubleColumnCondition;
 import org.datavec.api.transform.filter.ConditionFilter;
 import org.datavec.api.transform.schema.Schema;
-import org.datavec.api.transform.transform.condition.ConditionalReplaceValueTransform;
 import org.datavec.api.transform.transform.time.DeriveColumnsFromTimeTransform;
-import org.datavec.api.transform.transform.time.StringToTimeTransform;
 import org.datavec.api.util.ClassPathResource;
 import org.datavec.api.writable.DoubleWritable;
 import org.datavec.api.writable.Writable;
-import org.datavec.spark.functions.RecordReaderFunction;
 import org.datavec.spark.transform.SparkTransformExecutor;
 import org.datavec.spark.transform.misc.StringToWritablesFunction;
 import org.datavec.spark.transform.misc.WritablesToStringFunction;
@@ -30,7 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 
 /**
- * Basic DataVec example for preprocessing operations on some simple CSV data. If you just want to load CSV data 
+ * Basic DataVec example for preprocessing operations on some simple CSV data. If you just want to load CSV data
  * and pass it on for learning take a look at {@see org.deeplearning4j.examples.dataExample.CSVExample}.
  *
  * The premise here is that some data regarding transactions is available in CSV format, and we want to do some some
@@ -88,7 +84,7 @@ public class BasicDataVecExample {
             .removeColumns("CustomerID","MerchantID")
 
             //Now, suppose we only want to analyze transactions involving merchants in USA or Canada. Let's filter out
-            // everthing except for those countries.
+            // everything except for those countries.
             //Here, we are applying a conditional filter. We remove all of the examples that match the condition
             // The condition is "MerchantCountryCode" isn't one of {"USA", "CAN"}
             .filter(new ConditionFilter(
@@ -141,16 +137,17 @@ public class BasicDataVecExample {
 
         JavaSparkContext sc = new JavaSparkContext(conf);
 
-        String directory = new ClassPathResource("BasicDataVecExample/exampledata.csv").getFile().getParent(); //Normally just define your directory like "file:/..." or "hdfs:/..."
-        JavaRDD<String> stringData = sc.textFile(directory);
+        //Define the path to the data file. You could use a directory here if the data is in multiple files
+        //Normally just define your path like "file:/..." or "hdfs:/..."
+        String path = new ClassPathResource("BasicDataVecExample/exampledata.csv").getFile().getAbsolutePath();
+        JavaRDD<String> stringData = sc.textFile(path);
 
         //We first need to parse this format. It's comma-delimited (CSV) format, so let's parse it using CSVRecordReader:
         RecordReader rr = new CSVRecordReader();
         JavaRDD<List<Writable>> parsedInputData = stringData.map(new StringToWritablesFunction(rr));
 
         //Now, let's execute the transforms we defined earlier:
-        SparkTransformExecutor exec = new SparkTransformExecutor();
-        JavaRDD<List<Writable>> processedData = exec.execute(parsedInputData, tp);
+        JavaRDD<List<Writable>> processedData = SparkTransformExecutor.execute(parsedInputData, tp);
 
         //For the sake of this example, let's collect the data locally and print it:
         JavaRDD<String> processedAsString = processedData.map(new WritablesToStringFunction(","));

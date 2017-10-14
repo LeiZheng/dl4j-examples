@@ -12,6 +12,7 @@ import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
@@ -63,7 +64,6 @@ public class GravesLSTMCharModellingExample {
 		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
 			.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
 			.learningRate(0.1)
-			.rmsDecay(0.95)
 			.seed(12345)
 			.regularization(true)
 			.l2(0.001)
@@ -71,10 +71,10 @@ public class GravesLSTMCharModellingExample {
             .updater(Updater.RMSPROP)
 			.list()
 			.layer(0, new GravesLSTM.Builder().nIn(iter.inputColumns()).nOut(lstmLayerSize)
-					.activation("tanh").build())
+					.activation(Activation.TANH).build())
 			.layer(1, new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize)
-					.activation("tanh").build())
-			.layer(2, new RnnOutputLayer.Builder(LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
+					.activation(Activation.TANH).build())
+			.layer(2, new RnnOutputLayer.Builder(LossFunction.MCXENT).activation(Activation.SOFTMAX)        //MCXENT + softmax for classification
 					.nIn(lstmLayerSize).nOut(nOut).build())
             .backpropType(BackpropType.TruncatedBPTT).tBPTTForwardLength(tbpttLength).tBPTTBackwardLength(tbpttLength)
 			.pretrain(false).backprop(true)
@@ -206,13 +206,19 @@ public class GravesLSTMCharModellingExample {
 	 * @param distribution Probability distribution over classes. Must sum to 1.0
 	 */
 	public static int sampleFromDistribution( double[] distribution, Random rng ){
-		double d = rng.nextDouble();
-		double sum = 0.0;
-		for( int i=0; i<distribution.length; i++ ){
-			sum += distribution[i];
-			if( d <= sum ) return i;
-		}
-		//Should never happen if distribution is a valid probability distribution
+	    double d = 0.0;
+	    double sum = 0.0;
+	    for( int t=0; t<10; t++ ) {
+            d = rng.nextDouble();
+            sum = 0.0;
+            for( int i=0; i<distribution.length; i++ ){
+                sum += distribution[i];
+                if( d <= sum ) return i;
+            }
+            //If we haven't found the right index yet, maybe the sum is slightly
+            //lower than 1 due to rounding error, so try again.
+        }
+		//Should be extremely unlikely to happen if distribution is a valid probability distribution
 		throw new IllegalArgumentException("Distribution is invalid? d="+d+", sum="+sum);
 	}
 }

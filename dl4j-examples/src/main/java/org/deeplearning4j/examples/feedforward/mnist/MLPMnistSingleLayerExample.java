@@ -1,6 +1,7 @@
 package org.deeplearning4j.examples.feedforward.mnist;
 
 
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
@@ -62,19 +63,19 @@ public class MLPMnistSingleLayerExample {
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .iterations(1)
                 .learningRate(0.006) //specify the learning rate
-                .updater(Updater.NESTEROVS).momentum(0.9) //specify the rate of change of the learning rate.
+                .updater(Updater.NESTEROVS)
                 .regularization(true).l2(1e-4)
                 .list()
                 .layer(0, new DenseLayer.Builder() //create the first, input layer with xavier initialization
                         .nIn(numRows * numColumns)
                         .nOut(1000)
-                        .activation("relu")
+                        .activation(Activation.RELU)
                         .weightInit(WeightInit.XAVIER)
                         .build())
                 .layer(1, new OutputLayer.Builder(LossFunction.NEGATIVELOGLIKELIHOOD) //create hidden layer
                         .nIn(1000)
                         .nOut(outputNum)
-                        .activation("softmax")
+                        .activation(Activation.SOFTMAX)
                         .weightInit(WeightInit.XAVIER)
                         .build())
                 .pretrain(false).backprop(true) //use backpropagation to adjust weights

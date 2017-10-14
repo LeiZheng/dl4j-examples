@@ -7,16 +7,20 @@ import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.Updater;
 import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
+import org.deeplearning4j.nn.conf.layers.BaseLayer;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.util.ModelSerializer;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.learning.config.IUpdater;
+import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 import java.io.File;
@@ -59,25 +63,25 @@ public class CustomLayerExample {
 
         MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
-            .updater(Updater.RMSPROP).rmsDecay(0.95)
+            .updater( new RmsProp(0.95))
             .weightInit(WeightInit.XAVIER)
             .regularization(true).l2(0.03)
             .list()
-            .layer(0, new DenseLayer.Builder().activation("tanh").nIn(nIn).nOut(6).build())     //Standard DenseLayer
+            .layer(0, new DenseLayer.Builder().activation(Activation.TANH).nIn(nIn).nOut(6).build())     //Standard DenseLayer
             .layer(1, new CustomLayer.Builder()
-                .activation("tanh")                                                             //Property inherited from FeedForwardLayer
-                .secondActivationFunction("sigmoid")                                            //Custom property we defined for our layer
+                .activation(Activation.TANH)                                                    //Property inherited from FeedForwardLayer
+                .secondActivationFunction(Activation.SIGMOID)                                   //Custom property we defined for our layer
                 .nIn(6).nOut(7)                                                                 //nIn and nOut also inherited from FeedForwardLayer
                 .build())
             .layer(2, new OutputLayer.Builder(LossFunctions.LossFunction.MCXENT)                //Standard OutputLayer
-                .activation("softmax").nIn(7).nOut(nOut).build())
+                .activation(Activation.SOFTMAX).nIn(7).nOut(nOut).build())
             .pretrain(false).backprop(true).build();
 
 
         //First:  run some basic sanity checks on the configuration:
-        double customLayerL2 = config.getConf(1).getLayer().getL2();
+        double customLayerL2 = ((BaseLayer)config.getConf(1).getLayer()).getL2();
         System.out.println("l2 coefficient for custom layer: " + customLayerL2);                //As expected: custom layer inherits the global L2 parameter configuration
-        Updater customLayerUpdater = config.getConf(1).getLayer().getUpdater();
+        IUpdater customLayerUpdater = ((BaseLayer)config.getConf(1).getLayer()).getIUpdater();
         System.out.println("Updater for custom layer: " + customLayerUpdater);                  //As expected: custom layer inherits the global Updater configuration
 
         //Second: We need to ensure that that the JSON and YAML configuration works, with the custom layer
@@ -152,14 +156,14 @@ public class CustomLayerExample {
             .weightInit(WeightInit.DISTRIBUTION).dist(new NormalDistribution(0,1))              //Larger weight init than normal can help with gradient checks
             .regularization(true).l2(0.03)
             .list()
-            .layer(0, new DenseLayer.Builder().activation("tanh").nIn(nIn).nOut(3).build())    //Standard DenseLayer
+            .layer(0, new DenseLayer.Builder().activation(Activation.TANH).nIn(nIn).nOut(3).build())    //Standard DenseLayer
             .layer(1, new CustomLayer.Builder()
-                .activation("tanh")                                                             //Property inherited from FeedForwardLayer
-                .secondActivationFunction("sigmoid")                                            //Custom property we defined for our layer
+                .activation(Activation.TANH)                                                    //Property inherited from FeedForwardLayer
+                .secondActivationFunction(Activation.SIGMOID)                                   //Custom property we defined for our layer
                 .nIn(3).nOut(3)                                                                 //nIn and nOut also inherited from FeedForwardLayer
                 .build())
             .layer(2, new OutputLayer.Builder(LossFunctions.LossFunction.MCXENT)                //Standard OutputLayer
-                .activation("softmax").nIn(3).nOut(nOut).build())
+                .activation(Activation.SOFTMAX).nIn(3).nOut(nOut).build())
             .pretrain(false).backprop(true).build();
         MultiLayerNetwork net = new MultiLayerNetwork(config);
         net.init();

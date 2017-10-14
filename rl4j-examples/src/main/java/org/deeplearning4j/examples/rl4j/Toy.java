@@ -1,6 +1,6 @@
 package org.deeplearning4j.examples.rl4j;
 
-
+import java.io.IOException;
 import org.deeplearning4j.rl4j.learning.ILearning;
 import org.deeplearning4j.rl4j.learning.Learning;
 import org.deeplearning4j.rl4j.learning.async.nstep.discrete.AsyncNStepQLearningDiscrete;
@@ -59,22 +59,18 @@ public class Toy {
                     2000        //num step for eps greedy anneal
             );
 
-    public static DQNFactoryStdDense.Configuration TOY_NET =
-            new DQNFactoryStdDense.Configuration(
-                    3,        //number of layers
-                    16,       //number of hidden nodes
-                    0.001,    //learning rate
-                    0.01      //l2 regularization
-            );
 
-    public static void main(String[] args )
-    {
+    public static DQNFactoryStdDense.Configuration TOY_NET =
+             DQNFactoryStdDense.Configuration.builder()
+        .l2(0.01).learningRate(1e-2).numLayer(3).numHiddenNodes(16).build();
+
+    public static void main(String[] args) throws IOException {
         simpleToy();
         //toyAsyncNstep();
 
     }
 
-    public static void simpleToy() {
+    public static void simpleToy() throws IOException {
 
         //record the training data in rl4j-data in a new folder
         DataManager manager = new DataManager();
@@ -96,7 +92,7 @@ public class Toy {
 
     }
 
-    public static void hardToy() {
+    public static void hardToy() throws IOException {
 
         //record the training data in rl4j-data in a new folder
         DataManager manager = new DataManager();
@@ -117,7 +113,7 @@ public class Toy {
     }
 
 
-    public static void toyAsyncNstep() {
+    public static void toyAsyncNstep() throws IOException {
 
         //record the training data in rl4j-data in a new folder
         DataManager manager = new DataManager();
